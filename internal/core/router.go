@@ -2,25 +2,42 @@ package core
 
 import (
 	"net/http"
+	"regexp"
+	"strings"
 )
 
-type Router struct {
-	mux *http.ServeMux
+type route struct {
+	method  string
+	pattern *regexp.Regexp
+	handler http.Handler
 }
 
-// NewRouter creates a new Router
+type Router struct {
+	routes []route
+}
+
 func NewRouter() *Router {
 	return &Router{
-		mux: http.NewServeMux(),
+		routes: []route{},
 	}
 }
 
-// Handle registers a new route with a matcher for the URL path
-func (r *Router) Handle(pattern string, handler http.Handler) {
-	r.mux.Handle(pattern, handler)
+func (r *Router) Handle(method string, pattern string, handler http.Handler) {
+	pattern = regexp.MustCompile(`:([a-zA-Z0-9_]+)`).ReplaceAllStringFunc(pattern, func(param string) string {
+		paramName := strings.TrimPrefix(param, ":")
+		return "(?P<" + paramName + ">[^/]+)"
+	})
+
+	regexPattern := regexp.MustCompile("^" + pattern + "$")
+	r.routes = append(r.routes, route{method, regexPattern, handler})
 }
 
-// ServeHTTP implements the http.Handler interface
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	r.mux.ServeHTTP(w, req)
+	for _, route := range r.routes {
+		if route.method == req.Method && route.pattern.MatchString(req.URL.Path) {
+			route.handler.ServeHTTP(w, req)
+			return
+		}
+	}
+	http.NotFound(w, req)
 }
