@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"myframework/internal/core"
-	"myframework/internal/modules/example_module"
-	"net/http"
 )
 
 func main() {
@@ -12,8 +10,7 @@ func main() {
 
 	app := core.NewApp()
 
-	app.Router.Handle("/example", http.HandlerFunc(example_module.ExampleModule))
-
+	fmt.Println("Server is running on http://localhost:8080")
 	if err := app.Start(":8080"); err != nil {
 		fmt.Println("Error starting server:", err)
 	}
